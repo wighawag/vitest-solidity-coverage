@@ -42,7 +42,13 @@ class CustomCoverageProvider implements CoverageProvider {
 	async reportCoverage(reportContext?: ReportContext | undefined) {
 		await onTestComplete();
 	}
-	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {}
+	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {
+		console.log(id);
+		return `
+		globalThis.COVERAGE=true;
+		${sourceCode}
+		`;
+	}
 	name = 'custom-coverage-provider';
 	options!: ResolvedCoverageOptions;
 

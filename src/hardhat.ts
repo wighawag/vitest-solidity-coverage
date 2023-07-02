@@ -4,8 +4,8 @@ import fs from 'fs';
 import utils from 'solidity-coverage/plugins/resources/plugin.utils.js';
 import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils.js';
 
-import {HardhatConfig} from 'hardhat/types';
-import {subtask, task} from 'hardhat/config.js';
+import {EthereumProvider, HardhatConfig} from 'hardhat/types';
+import {extendEnvironment, subtask, task} from 'hardhat/config.js';
 import {
 	TASK_COMPILE,
 	TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT,
@@ -14,6 +14,7 @@ import {
 } from 'hardhat/builtin-tasks/task-names.js';
 import {HardhatError} from 'hardhat/internal/core/errors.js';
 import {NomiclabsUtilsNormalisedConfig, createAPI} from './utils/index.js';
+import {setupProviderWithCoverageSupport} from './provider.js';
 
 const state: {
 	measureCoverage: boolean;
@@ -142,4 +143,11 @@ task('compile-for-coverage', 'Generates artifacts for coverage').setAction(async
 	}
 
 	if (error !== undefined) throw new HardhatError(error as any);
+});
+
+extendEnvironment((env) => {
+	if ((globalThis as any).COVERAGE) {
+		const provider = setupProviderWithCoverageSupport(env);
+		env.network.provider = provider as EthereumProvider;
+	}
 });
