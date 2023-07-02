@@ -43,13 +43,12 @@ class CustomCoverageProvider implements CoverageProvider {
 		await onTestComplete();
 	}
 	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {
-		console.log(id);
 		return `
 		globalThis.COVERAGE=true;
 		${sourceCode}
 		`;
 	}
-	name = 'custom-coverage-provider';
+	name = 'vitest-solidity-coverage';
 	options!: ResolvedCoverageOptions;
 
 	async initialize(ctx: Vitest) {

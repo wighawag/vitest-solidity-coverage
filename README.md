@@ -1,6 +1,6 @@
 # vitest-solidity-coverage
 
-A vitest coverage provider + hardhat plugin + library code to make solidity-coverage works with vitest
+A vitest coverage provider + hardhat plugin to make solidity-coverage works with vitest
 
 ## how it works
 
@@ -28,18 +28,10 @@ export default defineConfig({
 });
 ```
 
-You then need to use a special EIP-1193 provider in your test
-
-You can get via the following
-
-```typescript
-import hre from 'hardhat';
-import {setupProviderWithCoverageSupport} from 'vitest-solidity-coverage/provider';
-const provider = await setupProviderWithCoverageSupport(hre);
-```
-
 you can then do:
 
 ```bash
-vitest --coverage
+vitest run --coverage
 ```
+
+Note we use `run` as this package does not support live-reload in some cases.
