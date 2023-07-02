@@ -7,19 +7,14 @@ import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils'
 import fs from 'fs';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {createAPI} from './utils';
 
-export async function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment): Promise<EIP1193ProviderWithoutEvents> {
-	// TODO args like compile-for-coverage
-	const args = {};
-
-	const config = nomiclabsUtils.normalizeConfig(env.config, args);
+export async function setupProviderWithCoverageSupport(
+	env: HardhatRuntimeEnvironment
+): Promise<EIP1193ProviderWithoutEvents> {
+	const {config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+	const {api} = createAPI(config);
 	const ui = new PluginUI(config.logger.log);
-	// TODO solccover file: api = new API(utils.loadSolcoverJS(config));
-	const api = new CoverageAPI(config);
-	// const data = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-	// api.setInstrumentationData(data);
-	let {targets, skipped} = utils.assembleFiles(config, []);
-	targets = api.instrument(targets);
 
 	let network = await nomiclabsUtils.setupHardhatNetwork(env, api, ui);
 
@@ -42,14 +37,14 @@ export async function setupProviderWithCoverageSupport(env: HardhatRuntimeEnviro
 	// Run post-launch server hook;
 	await api.onServerReady(config);
 
-	nomiclabsUtils.collectTestMatrixData(args, env, api);
+	nomiclabsUtils.collectTestMatrixData(config, env, api);
 
 	const provider = (() => {
 		async function request(args: {method: string; params?: any[]}) {
 			const result = await network.provider.request(args);
 
 			const data = api.getInstrumentationData();
-			fs.writeFileSync('coverage-data.json', JSON.stringify(data, null, 2));
+			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
 			return result;
 		}
 		return new Proxy(network.provider, {

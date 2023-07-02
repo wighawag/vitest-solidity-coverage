@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import type {
 	AfterSuiteRunMeta,
 	CoverageProvider,
@@ -6,32 +8,18 @@ import type {
 	ResolvedCoverageOptions,
 	Vitest,
 } from 'vitest';
-import CoverageAPI from 'solidity-coverage/api';
 import utils from 'solidity-coverage/utils';
-import env from 'hardhat';
-import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils';
-import fs from 'fs';
+
+import {createAPI} from './utils';
 
 async function onTestComplete() {
-	// TODO args like compile-for-coverage
-	const args = {};
-
-	const config = nomiclabsUtils.normalizeConfig(env.config, args);
-	const api = new CoverageAPI(config);
-	let {targets, skipped} = utils.assembleFiles(config, []);
-	targets = api.instrument(targets);
+	const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+	const {api} = createAPI(config);
+	api.setInstrumentationData(instrumentationData);
 
 	await api.onTestsComplete(config);
 
-	const data = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-	api.setInstrumentationData(data);
-
-	// =================================
-	// Output (Istanbul or Test Matrix)
-	// =================================
-	// TODO args
-	// args.matrix ? await api.saveTestMatrix() : await api.report();
-	await api.report();
+	config.matrix ? await api.saveTestMatrix() : await api.report();
 
 	await api.onIstanbulComplete(config);
 }

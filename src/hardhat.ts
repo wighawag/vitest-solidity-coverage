@@ -1,12 +1,11 @@
 import path from 'path';
 import fs from 'fs';
-import PluginUI from 'solidity-coverage/plugins/resources/nomiclabs.ui';
 
-import API from 'solidity-coverage/api';
 import utils from 'solidity-coverage/plugins/resources/plugin.utils';
 import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils';
 
-import {subtask, task, types} from 'hardhat/config';
+import {HardhatConfig} from 'hardhat/types';
+import {subtask, task} from 'hardhat/config';
 import {
 	TASK_COMPILE,
 	TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT,
@@ -14,27 +13,29 @@ import {
 	TASK_COMPILE_SOLIDITY_LOG_COMPILATION_ERRORS,
 } from 'hardhat/builtin-tasks/task-names';
 import {HardhatError} from 'hardhat/internal/core/errors';
+import {NomiclabsUtilsNormalisedConfig, createAPI} from './utils';
 
-
-// Toggled true for `coverage` task only.
-let measureCoverage = false;
-let configureYulOptimizer = false;
-let instrumentedSources: any | undefined;
-let optimizerDetails: any | undefined;
-
-// UI for the task flags...
-const ui = new PluginUI();
+const state: {
+	measureCoverage: boolean;
+	configureYulOptimizer: boolean;
+	instrumentedSources?: {[key: string]: string};
+	optimizerDetails?: any; // TODO type
+} = {
+	// Toggled true for `coverage` task only.
+	measureCoverage: false,
+	configureYulOptimizer: false,
+};
 
 subtask(TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT).setAction(async (_, {config}, runSuper) => {
 	const solcInput = await runSuper();
-	if (measureCoverage) {
+	if (state.measureCoverage && state.instrumentedSources) {
 		// The source name here is actually the global name in the solc input,
 		// but hardhat uses the fully qualified contract names.
 		for (const [sourceName, source] of Object.entries(solcInput.sources)) {
 			const absolutePath = path.join(config.paths.root, sourceName);
 			// Patch in the instrumented source code.
-			if (absolutePath in instrumentedSources) {
-				(source as any).content = instrumentedSources[absolutePath];
+			if (absolutePath in state.instrumentedSources) {
+				(source as any).content = state.instrumentedSources[absolutePath];
 			}
 		}
 	}
@@ -44,7 +45,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT).setAction(async (_, {config}, 
 // Solidity settings are best set here instead of the TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT task.
 subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE).setAction(async (_, __, runSuper) => {
 	const compilationJob = await runSuper();
-	if (measureCoverage && typeof compilationJob === 'object') {
+	if (state.measureCoverage && typeof compilationJob === 'object') {
 		if (compilationJob.solidityConfig.settings === undefined) {
 			compilationJob.solidityConfig.settings = {};
 		}
@@ -63,8 +64,8 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE).setAction(async (_, 
 
 		// This is fixes a stack too deep bug in ABIEncoderV2
 		// Experimental because not sure this works as expected across versions....
-		if (configureYulOptimizer) {
-			if (optimizerDetails === undefined) {
+		if (state.configureYulOptimizer) {
+			if (state.optimizerDetails === undefined) {
 				settings.optimizer.details = {
 					yul: true,
 					yulDetails: {
@@ -73,7 +74,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE).setAction(async (_, 
 				};
 				// Other configurations may work as well. This loads custom details from .solcoverjs
 			} else {
-				settings.optimizer.details = optimizerDetails;
+				settings.optimizer.details = state.optimizerDetails;
 			}
 		}
 	}
@@ -85,7 +86,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE).setAction(async (_, 
 subtask(TASK_COMPILE_SOLIDITY_LOG_COMPILATION_ERRORS).setAction(async (_, __, runSuper) => {
 	const defaultWarn = console.warn;
 
-	if (measureCoverage) {
+	if (state.measureCoverage) {
 		console.warn = () => {};
 	}
 	await runSuper();
@@ -97,86 +98,48 @@ subtask(TASK_COMPILE_SOLIDITY_LOG_COMPILATION_ERRORS).setAction(async (_, __, ru
  * @param  {HardhatUserArgs} args
  * @param  {HardhatEnv} env
  */
-task('compile-for-coverage', 'Generates artifacts for coverage')
-	.addOptionalParam('testfiles', ui.flags.file, '', types.string)
-	.addOptionalParam('solcoverjs', ui.flags.solcoverjs, '', types.string)
-	.addOptionalParam('temp', ui.flags.temp, '', types.string)
-	.addFlag('matrix', ui.flags.testMatrix)
-	.addFlag('abi', ui.flags.abi)
-	.setAction(async function (args, env) {
-		let error;
-		let ui;
-		let api;
-		let config;
-		let failedTests = 0;
+task('compile-for-coverage', 'Generates artifacts for coverage').setAction(async function (args, env) {
+	let error: any | undefined;
 
-		instrumentedSources = {};
-		measureCoverage = true;
-		try {
-			config = nomiclabsUtils.normalizeConfig(env.config, args);
-			ui = new PluginUI(config.logger.log);
-			api = new API(utils.loadSolcoverJS(config));
+	state.instrumentedSources = {};
+	state.measureCoverage = true;
+	try {
+		const configFromHardhat: HardhatConfig & NomiclabsUtilsNormalisedConfig = nomiclabsUtils.normalizeConfig(
+			env.config,
+			args || {}
+		);
+		let config: NomiclabsUtilsNormalisedConfig = {
+			workingDir: configFromHardhat.workingDir,
+			contractsDir: configFromHardhat.contractsDir,
+			testDir: configFromHardhat.testDir,
+			artifactsDir: configFromHardhat.artifactsDir,
+			logger: configFromHardhat.logger,
+			solcoverjs: configFromHardhat.solcoverjs,
+			gasReporter: configFromHardhat.gasReporter,
+			matrix: configFromHardhat.matrix,
+		};
 
-			optimizerDetails = api.solcOptimizerDetails;
+		const {api, skipped, targets} = createAPI(config);
 
-			// Catch interrupt signals
-			process.on('SIGINT', nomiclabsUtils.finish.bind(null, config, api, true));
-
-			// Merge non-null flags into hardhatArguments
-			const flags: any = {};
-			for (const key of Object.keys(args)) {
-				if (args[key] && args[key].length) {
-					flags[key] = args[key];
-				}
-			}
-
-			// ================
-			// Instrumentation
-			// ================
-
-			const skipFiles = api.skipFiles || [];
-
-			let {targets, skipped} = utils.assembleFiles(config, skipFiles);
-
-			targets = api.instrument(targets);
-			for (const target of targets) {
-				instrumentedSources[target.canonicalPath] = target.source;
-			}
-			utils.reportSkipped(config, skipped);
-
-			// ==============
-			// Compilation
-			// ==============
-			ui.report('compilation', []);
-
-			config.temp = args.temp;
-			configureYulOptimizer = api.config.configureYulOptimizer;
-
-			// With Hardhat >= 2.0.4, everything should automatically recompile
-			// after solidity-coverage corrupts the artifacts.
-			// Prior to that version, we (try to) save artifacts to a temp folder.
-			if (!config.useHardhatDefaultPaths) {
-				const {tempArtifactsDir, tempContractsDir} = utils.getTempLocations(config);
-
-				utils.setupTempFolders(config, tempContractsDir, tempArtifactsDir);
-				config.paths.artifacts = tempArtifactsDir;
-				config.paths.cache = nomiclabsUtils.tempCacheDir(config);
-			}
-
-			await env.run(TASK_COMPILE);
-
-			await api.onCompileComplete(config);
-
-			const data = api.getInstrumentationData();
-			fs.writeFileSync('coverage-data.json', JSON.stringify(data, null, 2));
-		} catch (e) {
-			error = e;
-		} finally {
-			measureCoverage = false;
+		for (const target of targets) {
+			state.instrumentedSources[target.canonicalPath] = target.source;
 		}
 
-		await nomiclabsUtils.finish(config, api, false);
+		utils.reportSkipped(config, skipped);
 
-		if (error !== undefined) throw new HardhatError(error as any);
-		if (failedTests > 0) throw new HardhatError(ui.generate('tests-fail', [failedTests]));
-	});
+		state.optimizerDetails = api.solcOptimizerDetails;
+		state.configureYulOptimizer = api.config.configureYulOptimizer;
+		await env.run(TASK_COMPILE);
+		await api.onCompileComplete(config);
+
+		const data = api.getInstrumentationData();
+		fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+	} catch (e) {
+		error = e;
+	} finally {
+		state.measureCoverage = false;
+		state.instrumentedSources = undefined;
+	}
+
+	if (error !== undefined) throw new HardhatError(error as any);
+});
