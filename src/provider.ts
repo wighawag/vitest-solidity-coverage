@@ -1,8 +1,7 @@
-import CoverageAPI from 'solidity-coverage/api';
-import utils from 'solidity-coverage/utils';
+import utils from 'solidity-coverage/utils.js';
 import {HARDHAT_NETWORK_RESET_EVENT} from 'hardhat/internal/constants';
-import PluginUI from 'solidity-coverage/plugins/resources/nomiclabs.ui';
-import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils';
+import PluginUI from 'solidity-coverage/plugins/resources/nomiclabs.ui.js';
+import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils.js';
 
 import fs from 'fs';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';

@@ -1,8 +1,8 @@
 import path from 'path';
 import fs from 'fs';
 
-import utils from 'solidity-coverage/plugins/resources/plugin.utils';
-import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils';
+import utils from 'solidity-coverage/plugins/resources/plugin.utils.js';
+import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils.js';
 
 import {HardhatConfig} from 'hardhat/types';
 import {subtask, task} from 'hardhat/config';

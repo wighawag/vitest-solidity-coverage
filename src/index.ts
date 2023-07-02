@@ -8,7 +8,6 @@ import type {
 	ResolvedCoverageOptions,
 	Vitest,
 } from 'vitest';
-import utils from 'solidity-coverage/utils';
 
 import {createAPI} from './utils';
 

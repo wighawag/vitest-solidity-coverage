@@ -1,5 +1,5 @@
-import API from 'solidity-coverage/api';
-import utils from 'solidity-coverage/plugins/resources/plugin.utils';
+import API from 'solidity-coverage/api.js';
+import utils from 'solidity-coverage/plugins/resources/plugin.utils.js';
 
 export type Args = {
 	skiptestfilesFiles?: string;
