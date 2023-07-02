@@ -5,15 +5,15 @@ import utils from 'solidity-coverage/plugins/resources/plugin.utils.js';
 import nomiclabsUtils from 'solidity-coverage/plugins/resources/nomiclabs.utils.js';
 
 import {HardhatConfig} from 'hardhat/types';
-import {subtask, task} from 'hardhat/config';
+import {subtask, task} from 'hardhat/config.js';
 import {
 	TASK_COMPILE,
 	TASK_COMPILE_SOLIDITY_GET_COMPILER_INPUT,
 	TASK_COMPILE_SOLIDITY_GET_COMPILATION_JOB_FOR_FILE,
 	TASK_COMPILE_SOLIDITY_LOG_COMPILATION_ERRORS,
-} from 'hardhat/builtin-tasks/task-names';
-import {HardhatError} from 'hardhat/internal/core/errors';
-import {NomiclabsUtilsNormalisedConfig, createAPI} from './utils';
+} from 'hardhat/builtin-tasks/task-names.js';
+import {HardhatError} from 'hardhat/internal/core/errors.js';
+import {NomiclabsUtilsNormalisedConfig, createAPI} from './utils/index.js';
 
 const state: {
 	measureCoverage: boolean;

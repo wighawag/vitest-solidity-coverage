@@ -1,6 +1,6 @@
 {
 	"name": "vitest-solidity-coverage",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "vitest coverage provider for solidity-coverage",
 	"publishConfig": {
 		"access": "public"

@@ -9,7 +9,7 @@ import type {
 	Vitest,
 } from 'vitest';
 
-import {createAPI} from './utils';
+import {createAPI} from './utils/index.js';
 
 async function onTestComplete() {
 	const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
