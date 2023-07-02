@@ -1,6 +1,6 @@
 {
 	"name": "vitest-solidity-coverage",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "vitest coverage provider for solidity-coverage",
 	"publishConfig": {
 		"access": "public"
@@ -26,6 +26,12 @@
 			"default": "./dist/provider.cjs"
 		}
 	},
+	"typesVersions": {
+		"*": {
+		  "hardhat": ["./dist/hardhat.d.ts"],
+		  "provider": ["./dist/provider.d.ts"]
+		}
+	  },
 	"devDependencies": {
 		"eip-1193": "^0.4.7",
 		"hardhat": "^2.16.1",
