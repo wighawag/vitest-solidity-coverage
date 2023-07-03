@@ -1,5 +1,3 @@
-import fs from 'fs';
-
 import type {
 	AfterSuiteRunMeta,
 	CoverageProvider,
@@ -10,9 +8,9 @@ import type {
 } from 'vitest';
 
 import {createAPI} from './utils/index.js';
+import {appendLog, resetLog} from './utils/debug.js';
 
-async function onTestComplete() {
-	const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+async function report(instrumentationData: any, config: any) {
 	const {api} = createAPI(config);
 	api.setInstrumentationData(instrumentationData);
 
@@ -24,27 +22,81 @@ async function onTestComplete() {
 }
 
 const CustomCoverageProviderModule: CoverageProviderModule = {
+	/**
+	 * Factory for creating a new coverage provider
+	 */
 	getProvider(): CoverageProvider {
+		resetLog();
 		return new CustomCoverageProvider();
 	},
-	startCoverage() {},
-	stopCoverage() {},
-	takeCoverage() {},
+
+	/**
+	 * Executed before tests are run in the worker thread.
+	 */
+	startCoverage() {
+		appendLog(`startCoverage`);
+	},
+
+	/**
+	 * Executed on after each run in the worker thread. Possible to return a payload passed to the provider
+	 */
+	takeCoverage() {
+		appendLog(`takeCoverage`);
+		const {config, api} = (globalThis as any).COVERAGE_STATE;
+		const data = api.getInstrumentationData();
+
+		// we used to write to file
+		// fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+		// now we return the data
+		return {instrumentationData: data, config};
+	},
+
+	/**
+	 * Executed after all tests have been run in the worker thread.
+	 */
+	stopCoverage() {
+		appendLog(`stopCoverage`);
+
+		// we used to save data, here we now do in takeCoverage
+		// const {config, api} = (globalThis as any).COVERAGE_STATE;
+		// const data = api.getInstrumentationData();
+		// fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+		// return data;
+	},
 };
 
 class CustomCoverageProvider implements CoverageProvider {
+	private instrumentationData: any | undefined;
+	private config: any | undefined;
+	private counter: number = 1;
+
 	resolveOptions(): ResolvedCoverageOptions {
-		// TODO ?
-		return {} as any;
+		appendLog(`resolveOptions`);
+		return this.options;
 	}
-	clean(clean?: boolean | undefined) {}
-	onAfterSuiteRun(meta: AfterSuiteRunMeta) {}
+	clean(clean?: boolean | undefined) {
+		appendLog(`clean`);
+		this.counter++;
+	}
+	onAfterSuiteRun(meta: AfterSuiteRunMeta) {
+		appendLog(`onAfterSuiteRun`);
+		if (meta.coverage) {
+			// we take data from `takeCoverage`
+			this.instrumentationData = (meta.coverage as any).instrumentationData;
+			this.config = (meta.coverage as any).config;
+		}
+	}
 	async reportCoverage(reportContext?: ReportContext | undefined) {
-		await onTestComplete();
+		appendLog(`reportCoverage`);
+
+		// we used to read from file
+		// const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+		// we now get it from this (see `onAfterSuiteRun`)
+		await report(this.instrumentationData, this.config);
 	}
 	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {
 		return `
-		globalThis.COVERAGE=true;
+		globalThis.COVERAGE=${this.counter};
 		${sourceCode}
 		`;
 	}
@@ -52,6 +104,7 @@ class CustomCoverageProvider implements CoverageProvider {
 	options!: ResolvedCoverageOptions;
 
 	async initialize(ctx: Vitest) {
+		appendLog(`initialize`);
 		this.options = ctx.config.coverage;
 	}
 }

@@ -146,8 +146,6 @@ task('compile-for-coverage', 'Generates artifacts for coverage').setAction(async
 });
 
 extendEnvironment((env) => {
-	if ((globalThis as any).COVERAGE) {
-		const provider = setupProviderWithCoverageSupport(env);
-		env.network.provider = provider as EthereumProvider;
-	}
+	const provider = setupProviderWithCoverageSupport(env);
+	env.network.provider = provider as EthereumProvider;
 });

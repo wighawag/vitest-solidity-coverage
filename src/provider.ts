@@ -9,15 +9,28 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {createAPI} from './utils/index.js';
 
 export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment): EIP1193ProviderWithoutEvents {
-	const {config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-	const {api} = createAPI(config);
-	const ui = new PluginUI(config.logger.log);
+	const COVERAGE_ID = (globalThis as any).COVERAGE as number;
+	if (!COVERAGE_ID) {
+		return env.network.provider as EIP1193ProviderWithoutEvents;
+	}
+
 	const provider = (() => {
-		let actualProvider: EIP1193ProviderWithoutEvents | undefined;
+		let context:
+			| {
+					provider: EIP1193ProviderWithoutEvents;
+					COVERAGE_ID: number;
+			  }
+			| undefined;
 		async function setup() {
+			const {config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+			const {api} = createAPI(config);
+			(globalThis as any).COVERAGE_STATE = {api, config};
+			const ui = new PluginUI(config.logger.log);
+
 			let network = await nomiclabsUtils.setupHardhatNetwork(env, api, ui);
 
-			actualProvider = network.provider;
+			const newContext = {provider: network.provider, COVERAGE_ID};
+			context = newContext;
 
 			const accounts = await utils.getAccountsHardhat(network.provider);
 			const nodeInfo = await utils.getNodeInfoHardhat(network.provider);
@@ -40,26 +53,23 @@ export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment)
 
 			nomiclabsUtils.collectTestMatrixData(config, env, api);
 
-			return network.provider as EIP1193ProviderWithoutEvents;
+			return newContext;
 		}
 		async function request(args: {method: string; params?: any[]}) {
-			if (!actualProvider) {
-				actualProvider = await setup();
+			if (!context || COVERAGE_ID != context.COVERAGE_ID) {
+				context = await setup();
 			}
-			const result = await actualProvider.request(args);
-
-			const data = api.getInstrumentationData();
-			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
-			return result;
+			return context.provider.request(args);
 		}
 		return new Proxy(
+			// TODO support on / addEventListener, ... ?
 			{},
 			{
 				get(target, p) {
 					if (p === 'request') {
 						return request;
 					}
-					return (actualProvider as any)[p];
+					return (context?.provider as any)[p];
 				},
 			}
 		);
