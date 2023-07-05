@@ -34,4 +34,10 @@ you can then do:
 vitest run --coverage
 ```
 
-Note we use `run` as this package does not support live-reload in some cases.
+Note we use `run` as this package does not support live-reload probably due to some race condition when using vitest threading.
+
+If you want live reload of coverage you can run vitest this way
+
+```bash
+vitest --coverage --no-threads
+```
