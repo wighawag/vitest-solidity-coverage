@@ -35,6 +35,7 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 	 */
 	startCoverage() {
 		appendLog(`startCoverage`);
+		// (globalThis as any).COVERAGE++;
 	},
 
 	/**
@@ -88,6 +89,7 @@ class CustomCoverageProvider implements CoverageProvider {
 	}
 	async reportCoverage(reportContext?: ReportContext | undefined) {
 		appendLog(`reportCoverage`);
+		// appendLog(JSON.stringify(this.instrumentationData, null, 2));
 
 		// we used to read from file
 		// const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
@@ -95,6 +97,7 @@ class CustomCoverageProvider implements CoverageProvider {
 		await report(this.instrumentationData, this.config);
 	}
 	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {
+		// appendLog(`onFileTransform ${id}`);
 		return `
 		globalThis.COVERAGE=${this.counter};
 		${sourceCode}

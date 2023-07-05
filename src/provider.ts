@@ -7,6 +7,7 @@ import fs from 'fs';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {createAPI} from './utils/index.js';
+// import {appendLog} from './utils/debug.js';
 
 export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment): EIP1193ProviderWithoutEvents {
 	const COVERAGE_ID = (globalThis as any).COVERAGE as number;
@@ -22,6 +23,7 @@ export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment)
 			  }
 			| undefined;
 		async function setup() {
+			// appendLog(`SETUP ${COVERAGE_ID}`);
 			const {config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
 			const {api} = createAPI(config);
 			(globalThis as any).COVERAGE_STATE = {api, config};
@@ -59,6 +61,7 @@ export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment)
 			if (!context || COVERAGE_ID != context.COVERAGE_ID) {
 				context = await setup();
 			}
+			// console.log(`${args.method}`, context.COVERAGE_ID);
 			return context.provider.request(args);
 		}
 		return new Proxy(
