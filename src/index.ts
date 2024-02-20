@@ -13,7 +13,7 @@ import {appendLog, resetLog} from './utils/debug.js';
 
 async function report(instrumentationData: any, config: any) {
 	if (!config) {
-		const {instrumentationDataFromFile, configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+		const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
 		config = configFromFile;
 		instrumentationData = instrumentationDataFromFile;
 	}
