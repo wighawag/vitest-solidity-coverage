@@ -6,11 +6,17 @@ import type {
 	ResolvedCoverageOptions,
 	Vitest,
 } from 'vitest';
+import fs from 'fs';
 
 import {createAPI} from './utils/index.js';
 import {appendLog, resetLog} from './utils/debug.js';
 
 async function report(instrumentationData: any, config: any) {
+	if (!config) {
+		const {instrumentationDataFromFile, configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+		config = configFromFile;
+		instrumentationData = instrumentationDataFromFile;
+	}
 	const {api} = createAPI(config);
 	api.setInstrumentationData(instrumentationData);
 
