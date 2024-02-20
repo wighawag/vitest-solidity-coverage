@@ -27,6 +27,18 @@ async function report(instrumentationData: any, config: any) {
 	await api.onIstanbulComplete(config);
 }
 
+
+function getNumDiffHits(instrumentationData: any) {
+	let count = 0;
+	for (const key of Object.keys(instrumentationData)) {
+		const v = instrumentationData[key];
+		if (v.hits > 0) {
+			count ++;
+		}
+	}
+	return count;
+}
+
 const CustomCoverageProviderModule: CoverageProviderModule = {
 	/**
 	 * Factory for creating a new coverage provider
@@ -41,7 +53,8 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 	 */
 	startCoverage() {
 		appendLog(`startCoverage`);
-		// (globalThis as any).COVERAGE++;
+		(globalThis as any).COVERAGE = (globalThis as any).COVERAGE || 0;
+		(globalThis as any).COVERAGE++;
 	},
 
 	/**
@@ -55,6 +68,8 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 		if (state) {
 			config = state.config;
 			instrumentationData = state.api.getInstrumentationData();
+
+			appendLog(`numDiffHits ${getNumDiffHits(instrumentationData)}`)
 		} else {
 			// this case is an error ?
 			// no new instrumentationData is available, we take old from coverage-data.json
@@ -81,10 +96,13 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 		let instrumentationData;
 		const state = (globalThis as any).COVERAGE_STATE;
 		if (state) {
+			appendLog(`COVERAGE_STATE`);
 			config = state.config;
 			instrumentationData = state.api.getInstrumentationData();
 			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData, config}, null, 2));
 		} else {
+			// this happen when there is a skip
+			appendLog(`ERROR: NO COVERAGE_STATE`);
 			// this case is an error ?
 			// no new instrumentationData is available, we take old from coverage-data.json
 			const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
@@ -122,7 +140,14 @@ class CustomCoverageProvider implements CoverageProvider {
 	}
 	async reportCoverage(reportContext?: ReportContext | undefined) {
 		appendLog(`reportCoverage`);
-		// appendLog(JSON.stringify(this.instrumentationData, null, 2));
+		if (this.instrumentationData) {
+			const keys = Object.keys(this.instrumentationData);
+			appendLog(JSON.stringify({
+				numkeys: keys.length,
+				first: this.instrumentationData[keys[0]]
+			}, null, 2));
+		}
+		
 
 		// we used to read from file
 		// const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));

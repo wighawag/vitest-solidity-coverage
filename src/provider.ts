@@ -7,7 +7,7 @@ import fs from 'fs';
 import type {EIP1193ProviderWithoutEvents} from 'eip-1193';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {createAPI} from './utils/index.js';
-// import {appendLog} from './utils/debug.js';
+import {appendLog} from './utils/debug.js';
 
 export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment): EIP1193ProviderWithoutEvents {
 	const COVERAGE_ID = (globalThis as any).COVERAGE as number;
@@ -23,10 +23,11 @@ export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment)
 			  }
 			| undefined;
 		async function setup() {
-			// appendLog(`SETUP ${COVERAGE_ID}`);
+			appendLog(`SETUP ${COVERAGE_ID}`);
 			// we get the config that was setup in the hardhat `compile-for-coverage` task
-			const {config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+			const {config, instrumentationData} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
 			const {api} = createAPI(config);
+			api.setInstrumentationData(instrumentationData);
 			(globalThis as any).COVERAGE_STATE = {api, config};
 			const ui = new PluginUI(config.logger.log);
 
