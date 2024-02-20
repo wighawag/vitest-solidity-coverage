@@ -65,7 +65,7 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 
 
 		// we used to write to file
-		// fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+		fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData, config}, null, 2));
 		// now we return the data
 		return {instrumentationData, config};
 	},
@@ -77,10 +77,14 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 		appendLog(`stopCoverage`);
 
 		// we used to save data, here we now do in takeCoverage
-		// const {config, api} = (globalThis as any).COVERAGE_STATE;
-		// const data = api.getInstrumentationData();
-		// fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
-		// return data;
+		const state = (globalThis as any).COVERAGE_STATE;
+		if (state) {
+			const {config, api} =  state;
+			const data = api.getInstrumentationData();
+			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+			return data;
+		}
+		
 	},
 };
 
