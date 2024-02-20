@@ -49,13 +49,25 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 	 */
 	takeCoverage() {
 		appendLog(`takeCoverage`);
-		const {config, api} = (globalThis as any).COVERAGE_STATE;
-		const data = api.getInstrumentationData();
+		let config;
+		let instrumentationData;
+		const state = (globalThis as any).COVERAGE_STATE;
+		if (state) {
+			config = state.config;
+			instrumentationData = state.api.getInstrumentationData();
+		} else {
+			// this case is an error ?
+			// no new instrumentationData is available, we take old from coverage-data.json
+			const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+			config = configFromFile;
+			instrumentationData = instrumentationDataFromFile;
+		}
+
 
 		// we used to write to file
 		// fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
 		// now we return the data
-		return {instrumentationData: data, config};
+		return {instrumentationData, config};
 	},
 
 	/**
