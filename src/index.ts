@@ -77,13 +77,22 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 		appendLog(`stopCoverage`);
 
 		// we used to save data, here we now do in takeCoverage
+		let config;
+		let instrumentationData;
 		const state = (globalThis as any).COVERAGE_STATE;
 		if (state) {
-			const {config, api} =  state;
-			const data = api.getInstrumentationData();
-			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
-			return data;
+			config = state.config;
+			instrumentationData = state.api.getInstrumentationData();
+			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData, config}, null, 2));
+		} else {
+			// this case is an error ?
+			// no new instrumentationData is available, we take old from coverage-data.json
+			const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+			config = configFromFile;
+			instrumentationData = instrumentationDataFromFile;
 		}
+
+		return instrumentationData;
 		
 	},
 };
@@ -107,6 +116,8 @@ class CustomCoverageProvider implements CoverageProvider {
 			// we take data from `takeCoverage`
 			this.instrumentationData = (meta.coverage as any).instrumentationData;
 			this.config = (meta.coverage as any).config;
+		} else {
+			console.log({meta});
 		}
 	}
 	async reportCoverage(reportContext?: ReportContext | undefined) {
@@ -118,7 +129,8 @@ class CustomCoverageProvider implements CoverageProvider {
 		// we now get it from this (see `onAfterSuiteRun`)
 		await report(this.instrumentationData, this.config);
 	}
-	onFileTransform?(sourceCode: string, id: string, pluginCtx: any) {
+
+	onFileTransform(sourceCode: string, id: string, pluginCtx: any) {
 		// appendLog(`onFileTransform ${id}`);
 		return `
 		globalThis.COVERAGE=${this.counter};
