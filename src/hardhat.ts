@@ -15,7 +15,7 @@ import {
 import {HardhatError} from 'hardhat/internal/core/errors.js';
 import {NomiclabsUtilsNormalisedConfig, createAPI} from './utils/index.js';
 import {setupProviderWithCoverageSupport} from './provider.js';
-import { appendLog } from './utils/debug.js';
+import {appendLog} from './utils/debug.js';
 
 const state: {
 	measureCoverage: boolean;
@@ -133,10 +133,7 @@ task('compile-for-coverage', 'Generates artifacts for coverage').setAction(async
 		state.configureYulOptimizer = api.config.configureYulOptimizer;
 		await env.run(TASK_COMPILE);
 		await api.onCompileComplete(config);
-
-		const data = api.getInstrumentationData();
-		appendLog("initial coverage-data.json");
-		fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData: data, config}, null, 2));
+		fs.writeFileSync('.coverage-config.json', JSON.stringify({config}, null, 2));
 	} catch (e) {
 		error = e;
 	} finally {

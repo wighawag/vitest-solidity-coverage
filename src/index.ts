@@ -6,19 +6,16 @@ import type {
 	ResolvedCoverageOptions,
 	Vitest,
 } from 'vitest';
-import fs from 'fs';
 
 import {createAPI} from './utils/index.js';
 import {appendLog, resetLog} from './utils/debug.js';
+import fs from 'fs';
 
 async function report(instrumentationData: any, config: any) {
-	if (!config) {
-		const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-		config = configFromFile;
-		instrumentationData = instrumentationDataFromFile;
-	}
 	const {api} = createAPI(config);
 	api.setInstrumentationData(instrumentationData);
+
+	fs.writeFileSync('.coverage-data.json', JSON.stringify({config, instrumentationData}, null, 2));
 
 	await api.onTestsComplete(config);
 
@@ -27,13 +24,42 @@ async function report(instrumentationData: any, config: any) {
 	await api.onIstanbulComplete(config);
 }
 
+export type InstrumentationData = {
+	[key: string]: {
+		id: number;
+		locationIdx: number;
+		type: 'branch' | string;
+		contractPath: string;
+		hits: number;
+	};
+};
+
+function merge(dataA: InstrumentationData, dataB: InstrumentationData): InstrumentationData {
+	if (!dataA) {
+		return dataB;
+	}
+	if (!dataB) {
+		return dataA;
+	}
+	const newData: InstrumentationData = {...dataA};
+	for (const key of Object.keys(dataB)) {
+		const b = dataB[key];
+		const n = newData[key];
+		if (n) {
+			n.hits += b.hits;
+		} else {
+			newData[key] = b;
+		}
+	}
+	return newData;
+}
 
 function getNumDiffHits(instrumentationData: any) {
 	let count = 0;
 	for (const key of Object.keys(instrumentationData)) {
 		const v = instrumentationData[key];
 		if (v.hits > 0) {
-			count ++;
+			count++;
 		}
 	}
 	return count;
@@ -69,18 +95,8 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 			config = state.config;
 			instrumentationData = state.api.getInstrumentationData();
 
-			appendLog(`numDiffHits ${getNumDiffHits(instrumentationData)}`)
-		} else {
-			// this case is an error ?
-			// no new instrumentationData is available, we take old from coverage-data.json
-			const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-			config = configFromFile;
-			instrumentationData = instrumentationDataFromFile;
+			appendLog(`numDiffHits ${getNumDiffHits(instrumentationData)}`);
 		}
-
-
-		// we used to write to file
-		fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData, config}, null, 2));
 		// now we return the data
 		return {instrumentationData, config};
 	},
@@ -90,28 +106,6 @@ const CustomCoverageProviderModule: CoverageProviderModule = {
 	 */
 	stopCoverage() {
 		appendLog(`stopCoverage`);
-
-		// we used to save data, here we now do in takeCoverage
-		let config;
-		let instrumentationData;
-		const state = (globalThis as any).COVERAGE_STATE;
-		if (state) {
-			appendLog(`COVERAGE_STATE`);
-			config = state.config;
-			instrumentationData = state.api.getInstrumentationData();
-			fs.writeFileSync('coverage-data.json', JSON.stringify({instrumentationData, config}, null, 2));
-		} else {
-			// this happen when there is a skip
-			appendLog(`ERROR: NO COVERAGE_STATE`);
-			// this case is an error ?
-			// no new instrumentationData is available, we take old from coverage-data.json
-			const {instrumentationData: instrumentationDataFromFile, config: configFromFile} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-			config = configFromFile;
-			instrumentationData = instrumentationDataFromFile;
-		}
-
-		return instrumentationData;
-		
 	},
 };
 
@@ -119,6 +113,7 @@ class CustomCoverageProvider implements CoverageProvider {
 	private instrumentationData: any | undefined;
 	private config: any | undefined;
 	private counter: number = 1;
+	private suiteCounter = 0;
 
 	resolveOptions(): ResolvedCoverageOptions {
 		appendLog(`resolveOptions`);
@@ -132,26 +127,26 @@ class CustomCoverageProvider implements CoverageProvider {
 		appendLog(`onAfterSuiteRun`);
 		if (meta.coverage) {
 			// we take data from `takeCoverage`
-			this.instrumentationData = (meta.coverage as any).instrumentationData;
+			this.instrumentationData = merge(this.instrumentationData, (meta.coverage as any).instrumentationData);
 			this.config = (meta.coverage as any).config;
-		} else {
-			console.log({meta});
 		}
 	}
 	async reportCoverage(reportContext?: ReportContext | undefined) {
 		appendLog(`reportCoverage`);
 		if (this.instrumentationData) {
 			const keys = Object.keys(this.instrumentationData);
-			appendLog(JSON.stringify({
-				numkeys: keys.length,
-				first: this.instrumentationData[keys[0]]
-			}, null, 2));
+			appendLog(
+				JSON.stringify(
+					{
+						numkeys: keys.length,
+						first: this.instrumentationData[keys[0]],
+					},
+					null,
+					2
+				)
+			);
 		}
-		
 
-		// we used to read from file
-		// const {instrumentationData, config} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
-		// we now get it from this (see `onAfterSuiteRun`)
 		await report(this.instrumentationData, this.config);
 	}
 

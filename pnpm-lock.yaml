@@ -14,6 +14,9 @@ devDependencies:
   rimraf:
     specifier: ^5.0.5
     version: 5.0.5
+  set-defaults:
+    specifier: ^0.0.2
+    version: 0.0.2
   solidity-coverage:
     specifier: ^0.8.7
     version: 0.8.7(hardhat@2.20.1)
@@ -1514,6 +1517,11 @@ packages:
 
   /command-exists@1.2.9:
     resolution: {integrity: sha512-LTQ/SGc+s0Xc0Fu5WaKnR0YiygZkm9eKFvyS+fRsU7/ZWFF8ykFM6Pc9aCVf1+xasOOZpO3BAVgVrKvsqKHV7w==}
+    dev: true
+
+  /commander@10.0.1:
+    resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
+    engines: {node: '>=14'}
     dev: true
 
   /commander@3.0.2:
@@ -3236,6 +3244,13 @@ packages:
     resolution: {integrity: sha512-Qr3TosvguFt8ePWqsvRfrKyQXIiW+nGbYpy8XK24NQHE83caxWt+mIymTT19DGFbNWNLfEwsrkSmN64lVWB9ag==}
     dependencies:
       randombytes: 2.1.0
+    dev: true
+
+  /set-defaults@0.0.2:
+    resolution: {integrity: sha512-xPlIV4pUxF9BDOXqds9RL6BxJmzDfywBl98qHPD4D9rJjBGpLosYJerfI3xU0HY7BDmHTUkfHAplfdN7PamBFA==}
+    hasBin: true
+    dependencies:
+      commander: 10.0.1
     dev: true
 
   /setimmediate@1.0.5:

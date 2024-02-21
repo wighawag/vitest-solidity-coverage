@@ -25,9 +25,8 @@ export function setupProviderWithCoverageSupport(env: HardhatRuntimeEnvironment)
 		async function setup() {
 			appendLog(`SETUP ${COVERAGE_ID}`);
 			// we get the config that was setup in the hardhat `compile-for-coverage` task
-			const {config, instrumentationData} = JSON.parse(fs.readFileSync('coverage-data.json', 'utf-8'));
+			const {config} = JSON.parse(fs.readFileSync('.coverage-config.json', 'utf-8'));
 			const {api} = createAPI(config);
-			api.setInstrumentationData(instrumentationData);
 			(globalThis as any).COVERAGE_STATE = {api, config};
 			const ui = new PluginUI(config.logger.log);
 
